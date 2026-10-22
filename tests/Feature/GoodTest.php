@@ -106,6 +106,7 @@ class GoodTest extends TestCase
             'from_city' => 'Lahore',
             'to_city' => 'Jeddah',
             'item_description' => 'A small box of documents',
+            'receiver_email' => 'receiver@example.com',
             'weight_kg' => 2.5,
             'offered_reward' => 20,
             'currency_type' => 'USD',
@@ -115,8 +116,39 @@ class GoodTest extends TestCase
 
         $response->assertCreated()
             ->assertJsonPath('data.from_city', 'Lahore')
-            ->assertJsonPath('data.pickup_preference', 'sender_delivers');
-        $this->assertDatabaseHas('goods', ['from_city' => 'Lahore', 'user_id' => $user->id]);
+            ->assertJsonPath('data.pickup_preference', 'sender_delivers')
+            ->assertJsonPath('data.receiver_email', 'receiver@example.com');
+        $this->assertDatabaseHas('goods', ['from_city' => 'Lahore', 'user_id' => $user->id, 'receiver_email' => 'receiver@example.com']);
+    }
+
+    public function test_receiver_email_is_hidden_from_a_guest(): void
+    {
+        $good = Good::factory()->create(['receiver_email' => 'receiver@example.com']);
+
+        $this->getJson("/api/v1/goods/{$good->id}")
+            ->assertOk()->assertJsonPath('data.receiver_email', null);
+    }
+
+    public function test_receiver_email_is_hidden_from_a_stranger(): void
+    {
+        $good = Good::factory()->create(['receiver_email' => 'receiver@example.com']);
+        $stranger = User::factory()->create();
+
+        // Real bearer token, not Sanctum::actingAs — see comment above.
+        $token = $stranger->createToken('test')->plainTextToken;
+        $this->withHeader('Authorization', "Bearer {$token}")->getJson("/api/v1/goods/{$good->id}")
+            ->assertOk()->assertJsonPath('data.receiver_email', null);
+    }
+
+    public function test_receiver_email_is_visible_to_the_sender(): void
+    {
+        $sender = User::factory()->create();
+        $good = Good::factory()->create(['user_id' => $sender->id, 'receiver_email' => 'receiver@example.com']);
+
+        // Real bearer token, not Sanctum::actingAs — see comment above.
+        $token = $sender->createToken('test')->plainTextToken;
+        $this->withHeader('Authorization', "Bearer {$token}")->getJson("/api/v1/goods/{$good->id}")
+            ->assertOk()->assertJsonPath('data.receiver_email', 'receiver@example.com');
     }
 
     public function test_posting_a_good_notifies_travelers_already_flying_that_route(): void
@@ -135,6 +167,7 @@ class GoodTest extends TestCase
             'from_city' => 'Lahore',
             'to_city' => 'Jeddah',
             'item_description' => 'A small box of documents',
+            'receiver_email' => 'receiver@example.com',
             'weight_kg' => 2.5,
             'offered_reward' => 20,
             'currency_type' => 'USD',

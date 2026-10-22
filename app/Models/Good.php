@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'from_city',
     'to_city',
     'item_description',
+    'receiver_email',
     'weight_kg',
     'offered_reward',
     'currency_type',

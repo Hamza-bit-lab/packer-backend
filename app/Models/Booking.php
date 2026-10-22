@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['trip_id', 'good_id', 'sender_id', 'traveler_id', 'status', 'estimated_cost', 'payer', 'inspection_confirmed_at', 'delivery_proof_photo_url'])]
+#[Fillable(['trip_id', 'good_id', 'sender_id', 'traveler_id', 'status', 'estimated_cost', 'payer', 'inspection_confirmed_at', 'delivery_proof_photo_url', 'delivery_otp_hash', 'delivery_otp_created_at'])]
 class Booking extends Model
 {
     /** @use HasFactory<BookingFactory> */
@@ -91,6 +91,9 @@ class Booking extends Model
             'status' => BookingStatus::Completed,
             'inspection_confirmed_at' => now(),
             'delivery_proof_photo_url' => $deliveryProofPhotoUrl,
+            // The OTP has done its job — don't leave it sitting around.
+            'delivery_otp_hash' => null,
+            'delivery_otp_created_at' => null,
         ]);
     }
 }

@@ -25,6 +25,7 @@ class UpdateBookingStatusRequest extends FormRequest
         return [
             'inspection_confirmed' => ['required', 'accepted'],
             'photo' => ['required', 'image', 'max:4096'],
+            'otp' => ['required', 'string', 'size:6'],
         ];
     }
 }

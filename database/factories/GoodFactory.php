@@ -24,6 +24,7 @@ class GoodFactory extends Factory
             'from_city' => fake()->city(),
             'to_city' => fake()->city(),
             'item_description' => fake()->sentence(6),
+            'receiver_email' => fake()->safeEmail(),
             'weight_kg' => fake()->randomFloat(2, 0.5, 20),
             'offered_reward' => fake()->randomFloat(2, 5, 200),
             'currency_type' => fake()->randomElement(['USD', 'PKR', 'SAR', 'BRL', 'GBP']),

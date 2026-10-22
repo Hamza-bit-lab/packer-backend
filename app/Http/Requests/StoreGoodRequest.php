@@ -27,6 +27,7 @@ class StoreGoodRequest extends FormRequest
             'from_city' => ['required', 'string', 'max:255'],
             'to_city' => ['required', 'string', 'max:255'],
             'item_description' => ['required', 'string', 'max:1000'],
+            'receiver_email' => ['required', 'email', 'max:255'],
             'weight_kg' => ['required', 'numeric', 'min:0.01', 'max:1000'],
             'offered_reward' => ['required', 'numeric', 'min:0', 'max:1000000'],
             'currency_type' => ['required', 'string', 'size:3'],

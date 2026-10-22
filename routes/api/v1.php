@@ -60,6 +60,7 @@ Route::middleware(['auth:sanctum', 'not-banned', 'touch-last-seen'])->group(func
     Route::post('/bookings/{booking}/reject', [BookingController::class, 'reject']);
     Route::post('/bookings/{booking}/mark-in-transit', [BookingController::class, 'markInTransit']);
     Route::post('/bookings/{booking}/mark-arrived', [BookingController::class, 'markArrived']);
+    Route::post('/bookings/{booking}/send-delivery-otp', [BookingController::class, 'sendDeliveryOtp']);
     Route::post('/bookings/{booking}/complete', [BookingController::class, 'complete']);
     Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
 

@@ -26,6 +26,7 @@ class UpdateGoodRequest extends FormRequest
             'from_city' => ['sometimes', 'string', 'max:255'],
             'to_city' => ['sometimes', 'string', 'max:255'],
             'item_description' => ['sometimes', 'string', 'max:1000'],
+            'receiver_email' => ['sometimes', 'email', 'max:255'],
             'weight_kg' => ['sometimes', 'numeric', 'min:0.01', 'max:1000'],
             'offered_reward' => ['sometimes', 'numeric', 'min:0', 'max:1000000'],
             'currency_type' => ['sometimes', 'string', 'size:3'],

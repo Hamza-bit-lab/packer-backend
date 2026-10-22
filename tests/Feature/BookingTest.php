@@ -7,6 +7,7 @@ use App\Models\Good;
 use App\Models\Trip;
 use App\Models\User;
 use App\Notifications\BookingCancelled;
+use App\Notifications\DeliveryOtp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
@@ -147,6 +148,7 @@ class BookingTest extends TestCase
     public function test_completing_requires_the_full_tracking_flow_and_inspection_confirmation(): void
     {
         Storage::fake('uploads');
+        Notification::fake();
 
         $traveler = User::factory()->create();
         $booking = Booking::factory()->create(['traveler_id' => $traveler->id]);
@@ -174,10 +176,28 @@ class BookingTest extends TestCase
 
         $this->postJson("/api/v1/bookings/{$booking->id}/complete", [])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['inspection_confirmed']);
+            ->assertJsonValidationErrors(['inspection_confirmed', 'otp']);
 
         $this->post("/api/v1/bookings/{$booking->id}/complete", [
             'inspection_confirmed' => true,
+            'otp' => '000000',
+            'photo' => UploadedFile::fake()->image('proof.jpg'),
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['otp']);
+
+        $this->postJson("/api/v1/bookings/{$booking->id}/send-delivery-otp")->assertOk();
+
+        $code = null;
+        Notification::assertSentOnDemand(DeliveryOtp::class, function ($notification) use (&$code) {
+            $code = $notification->code;
+
+            return true;
+        });
+
+        $this->post("/api/v1/bookings/{$booking->id}/complete", [
+            'inspection_confirmed' => true,
+            'otp' => $code,
             'photo' => UploadedFile::fake()->image('proof.jpg'),
         ])
             ->assertOk()
@@ -185,6 +205,44 @@ class BookingTest extends TestCase
             ->assertJsonPath('data.delivery_proof_photo_url', fn ($url) => str_contains($url, 'delivery-proof-photos'));
 
         $this->assertEquals(1, $traveler->fresh()->completed_deliveries_count);
+        $this->assertNull($booking->fresh()->delivery_otp_hash);
+    }
+
+    public function test_delivery_otp_is_emailed_to_the_receiver_and_can_be_wrong(): void
+    {
+        Notification::fake();
+        Storage::fake('uploads');
+
+        $traveler = User::factory()->create();
+        $good = Good::factory()->create(['receiver_email' => 'receiver@example.com']);
+        $booking = Booking::factory()->arrived()->create(['traveler_id' => $traveler->id, 'good_id' => $good->id]);
+
+        Sanctum::actingAs($traveler);
+
+        $this->postJson("/api/v1/bookings/{$booking->id}/send-delivery-otp")->assertOk();
+
+        Notification::assertSentOnDemand(
+            DeliveryOtp::class,
+            fn ($notification, $channels, $notifiable) => $notifiable->routes['mail'] === 'receiver@example.com',
+        );
+
+        $this->post("/api/v1/bookings/{$booking->id}/complete", [
+            'inspection_confirmed' => true,
+            'otp' => '111111',
+            'photo' => UploadedFile::fake()->image('proof.jpg'),
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['otp']);
+    }
+
+    public function test_only_the_traveler_can_request_a_delivery_otp(): void
+    {
+        $traveler = User::factory()->create();
+        $sender = User::factory()->create();
+        $booking = Booking::factory()->arrived()->create(['traveler_id' => $traveler->id, 'sender_id' => $sender->id]);
+
+        Sanctum::actingAs($sender);
+        $this->postJson("/api/v1/bookings/{$booking->id}/send-delivery-otp")->assertForbidden();
     }
 
     public function test_only_the_traveler_can_advance_tracking_status(): void

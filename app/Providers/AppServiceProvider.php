@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Providers;
+
+use App\Notifications\Channels\SafeMailChannel;
+use Illuminate\Notifications\Channels\MailChannel;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\ServiceProvider;
+
+class AppServiceProvider extends ServiceProvider
+{
+    /**
+     * Register any application services.
+     */
+    public function register(): void
+    {
+        //
+    }
+
+    /**
+     * Bootstrap any application services.
+     */
+    public function boot(): void
+    {
+        // Every notification that lists 'mail' in via() now goes through the
+        // deferred, failure-safe wrapper instead of sending inline.
+        Notification::extend('mail', fn ($app) => new SafeMailChannel($app->make(MailChannel::class)));
+    }
+}

@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('throttle:6,1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::post('/auth/google', [AuthController::class, 'loginWithGoogle']);
     Route::post('/auth/forgot-password', [PasswordResetController::class, 'forgot']);
     Route::post('/auth/reset-password', [PasswordResetController::class, 'reset']);
 });

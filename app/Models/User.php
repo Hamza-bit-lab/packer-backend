@@ -15,11 +15,11 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable([
-    'name', 'email', 'password', 'phone_number', 'profile_pic_url', 'country',
+    'name', 'email', 'password', 'google_id', 'phone_number', 'profile_pic_url', 'country',
     'email_verification_code', 'email_verification_code_expires_at',
     'notify_bookings', 'notify_messages', 'notify_route_alerts',
 ])]
-#[Hidden(['password', 'remember_token', 'email_verification_code', 'email_verification_code_expires_at'])]
+#[Hidden(['password', 'google_id', 'remember_token', 'email_verification_code', 'email_verification_code_expires_at'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */

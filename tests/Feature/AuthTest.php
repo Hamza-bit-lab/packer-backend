@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -115,5 +116,58 @@ class AuthTest extends TestCase
     public function test_me_requires_authentication(): void
     {
         $this->getJson('/api/v1/me')->assertStatus(401);
+    }
+
+    private function fakeGoogleToken(array $overrides = []): void
+    {
+        Http::fake([
+            'oauth2.googleapis.com/*' => Http::response(array_merge([
+                'aud' => config('services.google.client_id'),
+                'sub' => 'google-123',
+                'email' => 'jane@example.com',
+                'email_verified' => 'true',
+                'name' => 'Jane Traveler',
+            ], $overrides)),
+        ]);
+    }
+
+    public function test_google_sign_in_creates_a_new_verified_user(): void
+    {
+        $this->fakeGoogleToken();
+
+        $response = $this->postJson('/api/v1/auth/google', ['id_token' => 'fake-token']);
+
+        $response->assertOk()->assertJsonStructure(['user' => ['id', 'name', 'email'], 'token']);
+        $this->assertDatabaseHas('users', ['email' => 'jane@example.com', 'google_id' => 'google-123']);
+        $this->assertNotNull(User::where('email', 'jane@example.com')->first()->email_verified_at);
+    }
+
+    public function test_google_sign_in_links_to_an_existing_account_by_email(): void
+    {
+        $user = User::factory()->create(['email' => 'jane@example.com', 'google_id' => null]);
+        $this->fakeGoogleToken();
+
+        $response = $this->postJson('/api/v1/auth/google', ['id_token' => 'fake-token']);
+
+        $response->assertOk()->assertJsonPath('user.id', $user->id);
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'google_id' => 'google-123']);
+    }
+
+    public function test_google_sign_in_rejects_a_token_for_a_different_app(): void
+    {
+        $this->fakeGoogleToken(['aud' => 'someone-elses-client-id']);
+
+        $this->postJson('/api/v1/auth/google', ['id_token' => 'fake-token'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['id_token']);
+    }
+
+    public function test_google_sign_in_rejects_an_unverified_email(): void
+    {
+        $this->fakeGoogleToken(['email_verified' => 'false']);
+
+        $this->postJson('/api/v1/auth/google', ['id_token' => 'fake-token'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['id_token']);
     }
 }
